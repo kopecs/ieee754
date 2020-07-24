@@ -72,7 +72,7 @@ impl Model {
                         } else {
                             0
                         }
-                        | significand << BINARY_64_SIGNIFICAND_BITS - self.significand_bits.len(),
+                        | significand << (BINARY_64_SIGNIFICAND_BITS - self.significand_bits.len()),
                 )
             }
         }
