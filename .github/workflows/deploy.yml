@@ -26,4 +26,5 @@ jobs:
       with:
         commit_message: "Update gh-pages"
         branch: gh-pages
-        file_pattern: pkg/*
+        file_pattern: -f pkg/*
+        skip_dirty_check: true
