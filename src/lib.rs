@@ -2,7 +2,7 @@
 #[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
 
-use std::iter::{self, Chain, Once};
+use std::iter;
 
 /// Number of **explicitly stored** significand bits for IEEE754 binary64.
 const BINARY_64_SIGNIFICAND_BITS: usize = 52;
@@ -133,65 +133,87 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 // `view` describes what to display.
 fn view(model: &Model) -> Vec<Node<Msg>> {
     nodes![
+        view_value(model),
+        view_bits(model),
         div![
-            C!["exponent_slider"],
-            "Exponent Bits: ",
-            input![
-                attrs! {
-                    At::Type => "range",
-                    At::Min => "1",
-                    At::Max => BINARY_64_EXPONENT_BITS.to_string(),
-                    At::Value => model.exponent_bits.len().to_string()
-                },
-                input_ev(Ev::Input, |i| Msg::SetExpSize(
-                    i.parse().expect("Slider must report number")
-                )),
+            C!["controls"],
+            div![
+                C!["exponent_slider"],
+                format!(
+                    "Exponent Bits ({}): ",
+                    model.exponent_bits.len().to_string()
+                ),
+                input![
+                    attrs! {
+                        At::Type => "range",
+                        At::Min => "1",
+                        At::Max => BINARY_64_EXPONENT_BITS.to_string(),
+                        At::Value => model.exponent_bits.len().to_string()
+                    },
+                    input_ev(Ev::Input, |i| Msg::SetExpSize(
+                        i.parse().expect("Slider must report number")
+                    )),
+                ],
             ],
-            p![model.exponent_bits.len().to_string()],
-        ],
-        div![
-            C!["significand_slider"],
-            "Significand Bits: ",
-            input![
-                attrs! {
-                    At::Type => "range",
-                    At::Min => "1",
-                    At::Max => BINARY_64_SIGNIFICAND_BITS.to_string(),
-                    At::Value => model.significand_bits.len().to_string()
-                },
-                input_ev(Ev::Input, |i| Msg::SetSigSize(
-                    i.parse().expect("Slider must report number")
-                )),
+            div![
+                C!["significand_slider"],
+                format!(
+                    "Significand Bits ({}): ",
+                    model.significand_bits.len().to_string()
+                ),
+                input![
+                    attrs! {
+                        At::Type => "range",
+                        At::Min => "1",
+                        At::Max => BINARY_64_SIGNIFICAND_BITS.to_string(),
+                        At::Value => model.significand_bits.len().to_string()
+                    },
+                    input_ev(Ev::Input, |i| Msg::SetSigSize(
+                        i.parse().expect("Slider must report number")
+                    )),
+                ],
             ],
-            p![model.significand_bits.len().to_string()],
-        ],
-        div![
-            C!["bits"],
-            style! {St::Display => "flex"},
-            iter::once(&model.sign_bit)
-                .zip(iter::repeat(BitType::Sign))
-                .chain(
-                    model
-                        .exponent_bits
-                        .iter()
-                        .zip(iter::repeat(BitType::Exponent))
-                )
-                .chain(
-                    model
-                        .significand_bits
-                        .iter()
-                        .zip(iter::repeat(BitType::Significand))
-                )
-                .enumerate()
-                .map(|(i, (&b, t))| button![
-                    C!["bit"],
-                    style! {St::BackgroundColor => t.color() },
-                    if b { "1" } else { "0" },
-                    ev(Ev::Click, move |_| Msg::ToggleBit(i))
-                ]),
-        ],
-        div![C!["value"], model.value().to_string()]
+        ]
     ]
+}
+
+fn view_bits(model: &Model) -> Node<Msg> {
+    div![
+        C!["bits"],
+        iter::once(&model.sign_bit)
+            .zip(iter::repeat(BitType::Sign))
+            .chain(
+                model
+                    .exponent_bits
+                    .iter()
+                    .zip(iter::repeat(BitType::Exponent))
+            )
+            .chain(
+                model
+                    .significand_bits
+                    .iter()
+                    .zip(iter::repeat(BitType::Significand))
+            )
+            .enumerate()
+            .map(|(i, (&b, t))| button![
+                C!["bit"],
+                style! {St::BackgroundColor => t.color() },
+                if b { "1" } else { "0" },
+                ev(Ev::Click, move |_| Msg::ToggleBit(i))
+            ]),
+    ]
+}
+
+fn view_value(model: &Model) -> Node<Msg> {
+    div![id!["result"], C!["value"], {
+        let value = model.value();
+        let abs_val = value.abs();
+        if abs_val == 0.0 || (1.0e-10..1.0e10).contains(&abs_val) {
+            format!("{:?}", value)
+        } else {
+            format!("{:e}", value)
+        }
+    }]
 }
 
 // ------ ------
