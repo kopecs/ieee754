@@ -1,5 +1,5 @@
 #![warn(rust_2018_idioms)]
-#[allow(clippy::wildcard_imports)]
+
 use seed::{prelude::*, *};
 
 use std::iter;
@@ -88,7 +88,7 @@ enum BitType {
 }
 
 impl BitType {
-    fn color(&self) -> &'static str {
+    fn color(self) -> &'static str {
         match self {
             Self::Sign => "#D72638",
             Self::Exponent => "#00916E",
