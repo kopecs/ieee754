@@ -1,6 +1,6 @@
 [package]
 version = "0.1.0"
-name = "brown-cow"
+name = "brown_cow"
 repository = "https://github.com/kopecs/ieee754"
 authors = ["Cooper Pierce <cppierce@andrew.cmu.edu>"]
 description = "A floating point visualiser"

@@ -1,0 +1,14 @@
+.bit {
+    border: none;
+    text-align: center;
+    text-decoration: none;
+    font-size: 18pt;
+    font-family: 'Courier New', Courier, monospace;
+    color: #FEEFE5;
+    padding: 2px 4px 0px 4px;
+
+}
+
+html {
+    background-color: #FEEFE5;
+}

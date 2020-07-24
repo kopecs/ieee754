@@ -1,9 +1,15 @@
-// (Lines like the one below ignore selected Clippy rules
-//  - it's useful when you want to check your code with `cargo make verify`
-// but some rules are too "annoying" or are not applicable for your case.)
-#![allow(clippy::wildcard_imports)]
-
+#![warn(rust_2018_idioms)]
+#[allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
+
+use std::iter::{self, Chain, Once};
+
+/// Number of **explicitly stored** significand bits for IEEE754 binary64.
+const BINARY_64_SIGNIFICAND_BITS: usize = 52;
+
+const BINARY_64_EXPONENT_BITS: usize = 11;
+
+const BINARY_64_BIAS: usize = 1023;
 
 // ------ ------
 //     Init
@@ -11,7 +17,13 @@ use seed::{prelude::*, *};
 
 // `init` describes what should happen when your app started.
 fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
-    Model::default()
+    let exponent_len = 11;
+    let significand_len = 52;
+    Model {
+        sign_bit: false,
+        exponent_bits: vec![false; exponent_len],
+        significand_bits: vec![false; significand_len],
+    }
 }
 
 // ------ ------
@@ -19,23 +31,98 @@ fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
 // ------ ------
 
 // `Model` describes our app state.
-type Model = i32;
+pub struct Model {
+    sign_bit: bool,
+    exponent_bits: Vec<bool>,
+    significand_bits: Vec<bool>,
+}
+
+impl Model {
+    // Move out to other struct if we end up storing more data than just number in Model
+    fn value(&self) -> f64 {
+        match (
+            self.exponent_bits.iter().all(|&b| b),
+            self.exponent_bits.iter().any(|&b| b),
+        ) {
+            // Special
+            (true, _) => {
+                if self.significand_bits.iter().any(|&b| b) {
+                    f64::NAN
+                } else if self.sign_bit {
+                    f64::NEG_INFINITY
+                } else {
+                    f64::INFINITY
+                }
+            }
+            (false, normal) => {
+                let bias: u64 = (1 << (self.exponent_bits.len() - 1)) - 1;
+                let exp: u64 = self
+                    .exponent_bits
+                    .iter()
+                    .fold(0, |acc, &b| (acc << 1) | (if b { 1 } else { 0 }));
+                let significand: u64 = self
+                    .significand_bits
+                    .iter()
+                    .fold(0, |acc, &b| (acc << 1) | (if b { 1 } else { 0 }));
+                let sign = if self.sign_bit { 1 } else { 0 };
+                f64::from_bits(
+                    sign << (BINARY_64_EXPONENT_BITS + BINARY_64_SIGNIFICAND_BITS)
+                        | if normal {
+                            (exp + (BINARY_64_BIAS as u64 - bias)) << BINARY_64_SIGNIFICAND_BITS
+                        } else {
+                            0
+                        }
+                        | significand << BINARY_64_SIGNIFICAND_BITS - self.significand_bits.len(),
+                )
+            }
+        }
+    }
+}
+
+// For some styling later
+#[derive(Debug, Copy, Clone)]
+enum BitType {
+    Sign,
+    Exponent,
+    Significand,
+}
+
+impl BitType {
+    fn color(&self) -> &'static str {
+        match self {
+            Self::Sign => "#D72638",
+            Self::Exponent => "#00916E",
+            Self::Significand => "#F49D37",
+        }
+    }
+}
 
 // ------ ------
 //    Update
 // ------ ------
 
-// (Remove the line below once any of your `Msg` variants doesn't implement `Copy`.)
-#[derive(Copy, Clone)]
 // `Msg` describes the different events you can modify state with.
+#[derive(Copy, Clone)]
 enum Msg {
-    Increment,
+    SetExpSize(usize),
+    SetSigSize(usize),
+    ToggleBit(usize),
 }
 
 // `update` describes how to handle each `Msg`.
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Increment => *model += 1,
+        Msg::SetExpSize(e) => model.exponent_bits.resize(e, false),
+        Msg::SetSigSize(s) => model.significand_bits.resize(s, false),
+        Msg::ToggleBit(b) => {
+            if let Some(bit) = iter::once(&mut model.sign_bit)
+                .chain(&mut model.exponent_bits)
+                .chain(&mut model.significand_bits)
+                .nth(b)
+            {
+                *bit = !*bit;
+            }
+        }
     }
 }
 
@@ -43,14 +130,67 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 //     View
 // ------ ------
 
-// (Remove the line below once your `Model` become more complex.)
-#[allow(clippy::trivially_copy_pass_by_ref)]
 // `view` describes what to display.
-fn view(model: &Model) -> Node<Msg> {
-    div![
-        "This is a counter: ",
-        C!["counter"],
-        button![model, ev(Ev::Click, |_| Msg::Increment),],
+fn view(model: &Model) -> Vec<Node<Msg>> {
+    nodes![
+        div![
+            C!["exponent_slider"],
+            "Exponent Bits: ",
+            input![
+                attrs! {
+                    At::Type => "range",
+                    At::Min => "1",
+                    At::Max => BINARY_64_EXPONENT_BITS.to_string(),
+                    At::Value => model.exponent_bits.len().to_string()
+                },
+                input_ev(Ev::Input, |i| Msg::SetExpSize(
+                    i.parse().expect("Slider must report number")
+                )),
+            ],
+            p![model.exponent_bits.len().to_string()],
+        ],
+        div![
+            C!["significand_slider"],
+            "Significand Bits: ",
+            input![
+                attrs! {
+                    At::Type => "range",
+                    At::Min => "1",
+                    At::Max => BINARY_64_SIGNIFICAND_BITS.to_string(),
+                    At::Value => model.significand_bits.len().to_string()
+                },
+                input_ev(Ev::Input, |i| Msg::SetSigSize(
+                    i.parse().expect("Slider must report number")
+                )),
+            ],
+            p![model.significand_bits.len().to_string()],
+        ],
+        div![
+            C!["bits"],
+            style! {St::Display => "flex"},
+            iter::once(&model.sign_bit)
+                .zip(iter::repeat(BitType::Sign))
+                .chain(
+                    model
+                        .exponent_bits
+                        .iter()
+                        .zip(iter::repeat(BitType::Exponent))
+                )
+                .chain(
+                    model
+                        .significand_bits
+                        .iter()
+                        .zip(iter::repeat(BitType::Significand))
+                )
+                .enumerate()
+                .map(|(i, (&b, t))| button![
+                    C!["bit"],
+                    style! {St::BackgroundColor => t.color() },
+                    if b { "1" } else { "0" },
+                    ev(Ev::Click, move |_| Msg::ToggleBit(i))
+                ]),
+        ],
+        div![C!["value"], model.value().to_string()]
     ]
 }
 
