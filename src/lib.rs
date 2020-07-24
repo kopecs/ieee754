@@ -1,7 +1,6 @@
 #![warn(rust_2018_idioms)]
-
+#![allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
-
 use std::iter;
 
 /// Number of **explicitly stored** significand bits for IEEE754 binary64.
