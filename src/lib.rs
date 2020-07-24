@@ -1,7 +1,6 @@
 #![warn(rust_2018_idioms)]
-#[allow(clippy::wildcard_imports)]
+#![allow(clippy::wildcard_imports)]
 use seed::{prelude::*, *};
-
 use std::iter;
 
 /// Number of **explicitly stored** significand bits for IEEE754 binary64.
@@ -72,7 +71,7 @@ impl Model {
                         } else {
                             0
                         }
-                        | significand << BINARY_64_SIGNIFICAND_BITS - self.significand_bits.len(),
+                        | significand << (BINARY_64_SIGNIFICAND_BITS - self.significand_bits.len()),
                 )
             }
         }
@@ -88,7 +87,7 @@ enum BitType {
 }
 
 impl BitType {
-    fn color(&self) -> &'static str {
+    fn color(self) -> &'static str {
         match self {
             Self::Sign => "#D72638",
             Self::Exponent => "#00916E",
