@@ -1,0 +1,21 @@
+{
+  "name": "brown_cow",
+  "collaborators": [
+    "Cooper Pierce <cppierce@andrew.cmu.edu>"
+  ],
+  "description": "A floating point visualiser",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kopecs/ieee754"
+  },
+  "files": [
+    "package_bg.wasm",
+    "package.js",
+    "package.d.ts"
+  ],
+  "module": "package.js",
+  "types": "package.d.ts",
+  "sideEffects": false
+}
