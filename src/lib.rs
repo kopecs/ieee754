@@ -69,7 +69,7 @@ impl Model {
                         | if normal {
                             (exp + (BINARY_64_BIAS as u64 - bias)) << BINARY_64_SIGNIFICAND_BITS
                         } else {
-                            0
+                            BINARY_64_BIAS as u64 - bias
                         }
                         | significand << (BINARY_64_SIGNIFICAND_BITS - self.significand_bits.len()),
                 )
