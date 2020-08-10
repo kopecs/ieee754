@@ -10,6 +10,14 @@ const BINARY_64_EXPONENT_BITS: usize = 11;
 
 const BINARY_64_BIAS: usize = 1023;
 
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
 // ------ ------
 //     Init
 // ------ ------
@@ -67,12 +75,34 @@ impl Model {
                 f64::from_bits(
                     sign << (BINARY_64_EXPONENT_BITS + BINARY_64_SIGNIFICAND_BITS)
                         | if normal {
-                            (exp + (BINARY_64_BIAS as u64 - bias)) << BINARY_64_SIGNIFICAND_BITS
+                            exp + (BINARY_64_BIAS as u64 - bias)
+                        } else if significand == 0 {
+                            0
                         } else {
                             BINARY_64_BIAS as u64 - bias
-                        }
-                        | significand << (BINARY_64_SIGNIFICAND_BITS - self.significand_bits.len()),
-                )
+                                // Account for subnormal exponent if not exactly binary64 exp
+                                + if self.exponent_bits.len() == 11 { 0 } else { 1 }
+                        } << BINARY_64_SIGNIFICAND_BITS
+                        | significand
+                            << (BINARY_64_SIGNIFICAND_BITS
+                                - self.significand_bits.len()
+                                - if !normal && self.exponent_bits.len() != BINARY_64_EXPONENT_BITS
+                                {
+                                    1
+                                } else {
+                                    0
+                                }),
+                ) - if !normal
+                    && significand != 0
+                    && self.exponent_bits.len() != BINARY_64_EXPONENT_BITS
+                {
+                    // Note: bias is maximally 1023 as self.exponent_bits.len() is at most 10 if
+                    // this branch is taken
+                    #[allow(clippy::cast_possible_truncation)]
+                    (-f64::from(bias as u16)).exp2()
+                } else {
+                    0_f64
+                }
             }
         }
     }
